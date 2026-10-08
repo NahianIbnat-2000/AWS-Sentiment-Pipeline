@@ -491,7 +491,7 @@
   <p class="hero-sub">A cloud-powered sentiment analysis of 30 political news articles across two outlets and two languages, built entirely on AWS serverless services.</p>
   <div class="hero-meta">
     <span>&#128100; Katharina Burtscher &amp; Nahian Ibnat</span>
-    <span>&#128467; December, 2025</span>
+    <span>&#128467; December 21, 2025</span>
     <span>&#9749; AWS &bull; Python &bull; NLP</span>
   </div>
   <a href="https://github.com/NahianIbnat-2000/AWS-Sentiment-Pipeline" target="_blank" class="github-link">
@@ -834,6 +834,363 @@
   <p>Katharina Burtscher &amp; Nahian Ibnat &bull; CEU Data Engineering 1 &bull; December 2025</p>
   <p style="margin-top:8px;"><a href="https://github.com/NahianIbnat-2000/AWS-Sentiment-Pipeline" target="_blank">&#128279; Full code and data on GitHub</a></p>
 </footer>
+
+
+<!-- ========== FLOATING FAQ CHATBOT ========== -->
+<style>
+  /* FAB button */
+  .faq-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--brown-dark);
+    color: var(--amber-light);
+    border: 2px solid var(--amber);
+    box-shadow: 0 4px 16px rgba(62,32,8,0.35);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    z-index: 1000;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .faq-fab:hover { background: var(--brown); transform: scale(1.07); }
+  .faq-fab .faq-fab-label {
+    position: absolute;
+    bottom: 62px;
+    right: 0;
+    background: var(--brown-dark);
+    color: var(--amber-light);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 8px;
+    white-space: nowrap;
+    border: 1px solid var(--amber);
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .faq-fab.open .faq-fab-label { opacity: 0; }
+
+  /* Chat panel */
+  .faq-panel {
+    position: fixed;
+    bottom: 96px;
+    right: 24px;
+    width: 340px;
+    max-height: 520px;
+    background: var(--warm-white);
+    border: 1px solid var(--warm-beige);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(62,32,8,0.2);
+    display: flex;
+    flex-direction: column;
+    z-index: 999;
+    overflow: hidden;
+    transform: scale(0.92) translateY(16px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+    transform-origin: bottom right;
+  }
+  .faq-panel.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Panel header */
+  .faq-header {
+    background: var(--brown-dark);
+    color: var(--warm-white);
+    padding: 14px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .faq-header-left { display: flex; align-items: center; gap: 8px; }
+  .faq-header-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+  .faq-header h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--warm-white);
+  }
+  .faq-header p { font-size: 11px; color: rgba(250,245,236,0.55); }
+  .faq-close {
+    background: none;
+    border: none;
+    color: rgba(250,245,236,0.6);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .faq-close:hover { color: var(--warm-white); }
+
+  /* Messages */
+  .faq-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+  }
+  .faq-msg { display: flex; gap: 8px; align-items: flex-end; }
+  .faq-msg.user { flex-direction: row-reverse; }
+  .faq-av {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .faq-av.bot { background: var(--amber); color: var(--warm-white); }
+  .faq-av.user { background: var(--warm-beige); color: var(--slate); }
+  .faq-bubble {
+    max-width: 84%;
+    padding: 9px 13px;
+    border-radius: 13px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .faq-bubble.bot {
+    background: var(--warm-beige);
+    color: var(--slate);
+    border-bottom-left-radius: 3px;
+  }
+  .faq-bubble.user {
+    background: var(--brown-dark);
+    color: var(--warm-white);
+    border-bottom-right-radius: 3px;
+  }
+  .faq-bubble ul { padding-left: 16px; margin-top: 4px; }
+  .faq-bubble li { margin-bottom: 2px; }
+  .faq-bubble .hl {
+    display: inline;
+    background: rgba(200,131,42,0.15);
+    color: var(--amber);
+    font-weight: 600;
+    padding: 0 4px;
+    border-radius: 3px;
+  }
+
+  /* Chips */
+  .faq-chips {
+    padding: 6px 14px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--warm-beige);
+  }
+  .faq-chips-label {
+    width: 100%;
+    font-size: 10px;
+    color: var(--slate-light);
+    margin-bottom: 2px;
+    letter-spacing: 0.05em;
+  }
+  .faq-chip {
+    background: var(--amber-pale);
+    border: 1px solid var(--amber);
+    color: var(--brown);
+    font-size: 11.5px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.3;
+  }
+  .faq-chip:hover { background: var(--amber); color: var(--warm-white); border-color: var(--amber); }
+
+  /* Input */
+  .faq-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--warm-beige);
+    flex-shrink: 0;
+  }
+  .faq-input {
+    flex: 1;
+    border: 1px solid var(--warm-beige);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--slate);
+    resize: none;
+    outline: none;
+    line-height: 1.4;
+    min-height: 36px;
+    max-height: 80px;
+  }
+  .faq-input:focus { border-color: var(--amber); }
+  .faq-input::placeholder { color: var(--slate-light); }
+  .faq-send {
+    background: var(--amber);
+    border: none;
+    color: var(--warm-white);
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    align-self: flex-end;
+  }
+  .faq-send:hover { background: var(--brown); }
+
+  @media (max-width: 420px) {
+    .faq-panel { width: calc(100vw - 32px); right: 16px; }
+    .faq-fab { right: 16px; bottom: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .faq-panel, .faq-fab { transition: none !important; }
+  }
+</style>
+
+<!-- FAB -->
+<button class="faq-fab" id="faqFab" aria-label="Open FAQ chatbot">
+  💬
+  <span class="faq-fab-label">Ask a question</span>
+</button>
+
+<!-- Panel -->
+<div class="faq-panel" id="faqPanel" role="dialog" aria-label="Project FAQ">
+  <div class="faq-header">
+    <div class="faq-header-left">
+      <div class="faq-header-dot"></div>
+      <div>
+        <h3>Project FAQ</h3>
+        <p>Ask anything about this research</p>
+      </div>
+    </div>
+    <button class="faq-close" id="faqClose" aria-label="Close FAQ">✕</button>
+  </div>
+
+  <div class="faq-messages" id="faqMessages">
+    <div class="faq-msg bot">
+      <div class="faq-av bot">A</div>
+      <div class="faq-bubble bot">Hi! Tap a question below or type your own.</div>
+    </div>
+  </div>
+
+  <div class="faq-chips" id="faqChips">
+    <div class="faq-chips-label">Quick questions</div>
+  </div>
+
+  <div class="faq-input-row">
+    <textarea class="faq-input" id="faqInput" placeholder="Type a question…" rows="1" aria-label="Your question"></textarea>
+    <button class="faq-send" id="faqSend" aria-label="Send">↑</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const QA = [
+    { q: "What is this project?", chips: true, a: "This project analyzes how two Bangladeshi news outlets cover the BNP (Bangladesh Nationalist Party) using AWS cloud services. We scraped <strong>30 articles</strong> from The Daily Star and Prothom Alo (English + Bangla), translated the Bangla ones with AWS Translate, then ran sentiment analysis using AWS Comprehend." },
+    { q: "What did you find?", chips: true, a: "<span class='hl'>90%</span> of all articles were classified as <strong>Neutral</strong>. Only 2 articles came back as Mixed, both from The Daily Star. No articles were explicitly Positive or Negative. All three source streams showed remarkably similar sentiment." },
+    { q: "How much did it cost?", chips: true, a: "About <span class='hl'>~$0.95 per run</span>. AWS Translate was the biggest cost ($0.90 for 60k characters). AWS Comprehend added ~$0.05. S3 storage was essentially free. Total across both researchers: roughly <strong>$5.70</strong>." },
+    { q: "Which AWS services?", chips: true, a: "Three services: <ul><li><strong>Amazon S3</strong> — stored CSV files</li><li><strong>AWS Translate</strong> — converted Bangla to English</li><li><strong>AWS Comprehend</strong> — scored sentiment across four dimensions</li></ul>" },
+    { q: "What are the limitations?", chips: true, a: "Key ones: <ul><li>News is written neutrally by design, so sentiment picks up little signal</li><li>Only 30 articles — small sample</li><li>Manual article selection can introduce bias</li><li>AWS Comprehend was trained on Western text, not South Asian journalism</li></ul>" },
+    { q: "Does language matter?", chips: false, a: "Slightly. Prothom Alo's English articles show a marginally higher positive lean than their Bangla articles after translation. This could be the translation smoothing out tone, or the outlet genuinely writing differently for each audience. The difference is too small to draw a firm conclusion from 10 articles." }
+  ];
+
+  const fab = document.getElementById('faqFab');
+  const panel = document.getElementById('faqPanel');
+  const closeBtn = document.getElementById('faqClose');
+  const msgs = document.getElementById('faqMessages');
+  const chipsWrap = document.getElementById('faqChips');
+  const input = document.getElementById('faqInput');
+  const sendBtn = document.getElementById('faqSend');
+
+  fab.addEventListener('click', () => {
+    const isOpen = panel.classList.toggle('open');
+    fab.classList.toggle('open', isOpen);
+    if (isOpen) input.focus();
+  });
+  closeBtn.addEventListener('click', () => {
+    panel.classList.remove('open');
+    fab.classList.remove('open');
+  });
+
+  function addMsg(text, role) {
+    const wrap = document.createElement('div');
+    wrap.className = 'faq-msg ' + role;
+    const av = document.createElement('div');
+    av.className = 'faq-av ' + role;
+    av.textContent = role === 'bot' ? 'A' : 'N';
+    const bubble = document.createElement('div');
+    bubble.className = 'faq-bubble ' + role;
+    bubble.innerHTML = text;
+    wrap.append(role === 'user' ? bubble : av, role === 'user' ? av : bubble);
+    if (role === 'user') { wrap.innerHTML = ''; wrap.append(bubble, av); }
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function findAnswer(q) {
+    const low = q.toLowerCase();
+    const scored = QA.map(item => {
+      const words = item.q.toLowerCase().split(/\W+/).filter(w => w.length > 3);
+      return { item, score: words.filter(w => low.includes(w)).length };
+    }).sort((a, b) => b.score - a.score);
+    if (scored[0].score > 0) return scored[0].item.a;
+    const map = [
+      [['cost','price','dollar','cheap','expensive'], QA[2].a],
+      [['aws','amazon','service','s3','translate','comprehend'], QA[3].a],
+      [['find','result','sentiment','neutral','mixed','outcome'], QA[1].a],
+      [['limit','problem','issue','flaw','weakness','bias'], QA[4].a],
+      [['bangla','language','english','translate'], QA[5].a],
+    ];
+    for (const [keys, ans] of map) if (keys.some(k => low.includes(k))) return ans;
+    return null;
+  }
+
+  function ask(q) {
+    addMsg(q, 'user');
+    setTimeout(() => {
+      const exact = QA.find(i => i.q === q);
+      const ans = exact ? exact.a : findAnswer(q);
+      addMsg(ans || 'I don\'t have a specific answer for that. Check the <a href="https://github.com/NahianIbnat-2000/AWS-Sentiment-Pipeline" target="_blank" style="color:var(--amber);">GitHub README</a> for full details.', 'bot');
+    }, 250);
+  }
+
+  const label = chipsWrap.querySelector('.faq-chips-label');
+  QA.filter(q => q.chips).forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'faq-chip';
+    btn.textContent = item.q;
+    btn.addEventListener('click', () => { btn.remove(); ask(item.q); });
+    chipsWrap.appendChild(btn);
+  });
+
+  sendBtn.addEventListener('click', () => {
+    const val = input.value.trim();
+    if (!val) return;
+    input.value = '';
+    ask(val);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+  });
+})();
+</script>
 
 </body>
 </html>
